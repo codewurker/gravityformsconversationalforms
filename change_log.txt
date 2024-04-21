@@ -1,0 +1,10 @@
+### 1.2.0 | 2023-11-29
+- Fixed a bug where a form that requires login still shows the welcome screen to logged-out users.
+- API: Updated styles and refactored the Conversational Forms Add-On CSS API to be compatible with the CSS API in Gravity Forms 2.8.
+
+### 1.1.0 | 2023-10-05
+- Updated `is_conversational_form()` to the global namespace so it can be used in other add-ons.
+- Updated the conversational form view to ignore styles from the `gform_default_styles` filter.
+
+### 1.0.0 | 2023-07-27
+- It's all new!

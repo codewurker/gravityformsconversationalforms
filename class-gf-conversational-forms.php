@@ -25,16 +25,27 @@ class GF_Conversational_Forms extends \GFAddOn {
 
 	const QUERY_VAR = 'gf_conversational';
 
-	protected $_version                  = GF_CF_VERSION;
-	protected $_min_gravityforms_version = GF_CF_MIN_GF_VERSION;
-	protected $_slug                     = 'gravityformsconversationalforms';
-	protected $_path                     = 'gravityformsconversationalforms/conversationalforms.php';
-	protected $_full_path                = __FILE__;
-	protected $_title                    = 'Gravity Forms Conversational Forms Add-On';
-	protected $_short_title              = 'Conversational Forms';
-	protected $_enable_rg_autoupgrade    = true;
+	protected $_version                             = GF_CF_VERSION;
+	protected $_min_gravityforms_version            = GF_CF_MIN_GF_VERSION;
+	protected $_min_compatible_gravityforms_version = GF_CF_MIN_COMPAT_GF_VERSION;
+	protected $_slug                                = 'gravityformsconversationalforms';
+	protected $_path                                = 'gravityformsconversationalforms/conversationalforms.php';
+	protected $_full_path                           = __FILE__;
+	protected $_title                               = 'Gravity Forms Conversational Forms Add-On';
+	protected $_short_title                         = 'Conversational Forms';
+	protected $_enable_rg_autoupgrade               = true;
 
 	protected $_enable_theme_layer = true;
+
+	protected $_slug_verified = false;
+
+	// Members plugin integration
+	protected $_capabilities = array( 'gravityforms_conversationalforms', 'gravityforms_conversationalforms_uninstall' );
+
+	// Permissions
+	protected $_capabilities_settings_page = 'gravityforms_conversationalforms';
+	protected $_capabilities_form_settings = 'gravityforms_conversationalforms';
+	protected $_capabilities_uninstall = 'gravityforms_conversationalforms_uninstall';
 
 	/**
 	 * @var object|null $_instance If available, contains an instance of this class.
@@ -99,11 +110,17 @@ class GF_Conversational_Forms extends \GFAddOn {
 			return;
 		}
 
-		// Layers
-		require_once( dirname( __FILE__ ) . '/includes/theme-layers/layers/views/class-form-view.php' );
-		require_once( dirname( __FILE__ ) . '/includes/theme-layers/layers/views/class-conversational-field-markup.php' );
+		// Custom Post Type
+		add_action( 'init', array( $this, 'register_conversational_forms_post_type' ), 100 );
+		add_filter( 'post_type_link', array( $this, 'conversational_forms_post_type_permalinks' ), 10, 3 );
+		add_filter( 'wp_unique_post_slug', array( $this, 'prevent_slug_duplicates' ), 10, 6 );
+		add_filter( 'single_template', array( $this, 'conversational_form_template' ) );
 
-		//settings framework
+		// Layers
+		require_once( dirname( __FILE__ ) . '/includes/theme-layers/layers/views/class-conversational-field-markup.php' );
+		require_once( dirname( __FILE__ ) . '/includes/theme-layers/layers/views/class-form-view.php' );
+
+		// Settings Framework
 		require_once( \GFCommon::get_base_path() . '/includes/settings/class-fields.php' );
 
 		// Fields
@@ -132,8 +149,6 @@ class GF_Conversational_Forms extends \GFAddOn {
 			return;
 		}
 
-		add_filter( 'gform_full_screen_form_for_display', array( $this, 'check_if_full_screen_enabled' ), 10, 3 );
-		add_filter( 'gform_full_screen_template_path', array( $this, 'get_full_screen_template_path' ), 10, 1 );
 		add_filter( 'gform_target_page', array( $this, 'filter_target_page' ), 10, 2 );
 		add_filter( 'gform_pre_render' , array( $this, 'customize_form_settings' ), 10, 1 );
 
@@ -174,6 +189,7 @@ class GF_Conversational_Forms extends \GFAddOn {
 		}
 
 		add_filter( 'gform_form_actions', array( $this, 'filter_form_actions' ), 10, 2 );
+		add_filter( 'gform_forms_post_import', array( $this, 'create_post_after_import' ), 10, 1 );
 	}
 
 	/**
@@ -196,7 +212,7 @@ class GF_Conversational_Forms extends \GFAddOn {
 		add_action( 'admin_enqueue_scripts', array( $this, 'localize_admin_scripts' ) );
 		add_action( 'gform_enqueue_scripts', array( $this, 'localize_frontend_scripts' ), 1000, 2 );
 
-		add_action( 'gform_post_form_duplicated', array( $this, 'prevent_duplicate_permalinks' ), 10, 2 );
+		add_action( 'gform_post_form_duplicated', array( $this, 'create_post_for_duplicate' ), 10, 2 );
 
 		add_filter( 'gform_form_theme_slug', array( $this, 'customize_form_theme_slug' ), 10, 2 );
 
@@ -206,6 +222,164 @@ class GF_Conversational_Forms extends \GFAddOn {
 		if ( $this->is_plain_permalinks() ) {
 			add_filter( 'query_vars', array( $this, 'add_slug_query_var' ) );
 		}
+
+		add_action( 'parse_request', array( $this, 'parse_request' ), 10, 1 );
+	}
+
+	/**
+	 * Filters the request to detect conversational form slugs.
+	 *
+	 * @since 1.3
+	 *
+	 * @return mixed|void
+	 */
+	public function parse_request( $wp ) {
+		$requested_slug = $this->get_requested_slug();
+
+		if ( ! empty( $requested_slug ) && get_page_by_path( $requested_slug, OBJECT, 'conversational_form' ) ) {
+			$wp->query_vars = array(
+				'name'      => $requested_slug,
+				'post_type' => 'conversational_form',
+			);
+		}
+	}
+
+	/**
+	 * Run upgrades if necessary.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param $previous_version
+	 *
+	 * @return void
+	 */
+	public function upgrade( $previous_version ) {
+
+		if ( empty( $previous_version ) ) {
+			$previous_version = get_option( 'gravityformsaddon_gravityformsconversationalforms_version' );
+		}
+
+		// Version 1.3.0 has a new custom post type for conversational forms and a new format for image settings.
+		if ( version_compare( $previous_version, '1.3.0', '<' ) ) {
+			$this->upgrade_1_3_0_create_cpts();
+			$this->upgrade_1_3_0_image_settings();
+		}
+
+	}
+
+	/**
+	 * Create custom post types for existing conversational forms.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return void
+	 */
+	public function upgrade_1_3_0_create_cpts() {
+		$this->log_debug( __METHOD__ . '(): Converting existing conversational forms to use the new custom post type.' );
+
+		$updated = get_transient( 'gf_conversational_forms_1_3_upgraded_forms' );
+		if( $updated ) {
+			$this->log_debug( __METHOD__ . '(): Already converted forms to new custom post type.' );
+			return;
+		}
+
+		$form_count = 0;
+		$forms      = \GFAPI::get_forms();
+
+		foreach ( $forms as $form ) {
+			$form_meta        = \GFFormsModel::get_form_meta( $form['id'] );
+			$full_screen_slug = rgars( $form_meta, 'gf_theme_layers/form_full_screen_slug' );
+			$form_post_id     = rgars( $form_meta, 'gf_theme_layers/post_id' );
+			$legacy           = GFCommon::is_legacy_markup_enabled( $form['id'] );
+
+			if ( $full_screen_slug && ! $form_post_id && ! $legacy ) {
+				$this->log_debug( __METHOD__ . '(): Updating form ' . $form['id'] . ' to use new custom post type.' );
+				$post_id = wp_insert_post( array(
+					'post_title'  => $form['title'],
+					'post_name'   => $full_screen_slug,
+					'post_status' => 'publish',
+					'post_type'   => 'conversational_form',
+				) );
+				if ( ! is_wp_error( $post_id ) ) {
+					$post = get_post( $post_id );
+					update_post_meta( $post_id, 'gf_form_id', $form['id'] );
+					$form_meta['gf_theme_layers']['post_id'] = $post_id;
+					$form_meta['gf_theme_layers']['page_title'] = $post->post_title;
+					$update = GFFormsModel::update_form_meta( $form['id'], $form_meta );
+					if( ! $update ) {
+						$this->log_error( __METHOD__ . '(): Failed to update form meta for form ' . $form['id'] );
+					}
+					$form_count++;
+				} else {
+					$this->log_error( __METHOD__ . '(): Failed to create post for form ' . $form['id'] );
+				}
+				$this->log_debug( __METHOD__ . '(): Post id ' . $post_id . ' created for form id ' . $form['id'] );
+			}
+		}
+
+		set_transient( 'gf_conversational_forms_1_3_upgraded_forms', $form_count, DAY_IN_SECONDS );
+
+		flush_rewrite_rules();
+
+		$this->log_debug( __METHOD__ . '(): Finished converting to new custom post type. ' . $form_count . ' posts created.' );
+
+	}
+
+	/**
+	 * Upgrade image settings to use the new attachment data format.
+	 *
+	 * @since 1.3.0
+	 */
+	public function upgrade_1_3_0_image_settings() {
+		$this->log_debug( __METHOD__ . '(): Upgrading image settings to use the new attachment data format.' );
+
+		$updated = get_transient( 'gf_conversational_forms_1_3_upgraded_images' );
+		if( $updated ) {
+			$this->log_debug( __METHOD__ . '(): Already converted images to use the new data format.' );
+			return;
+		}
+
+		$image_count = 0;
+
+		$forms = \GFAPI::get_forms();
+		foreach ( $forms as $form ) {
+			$updated    = false;
+			$form_meta  = \GFFormsModel::get_form_meta( $form['id'] );
+
+			$image_settings = array(
+				'logo',
+				'background_image',
+				'welcome_screen_image',
+			);
+
+			foreach( $image_settings as $setting ) {
+				$image_url = rgars( $form_meta, "gf_theme_layers/{$setting}" );
+				if ( $image_url && ! is_array( $image_url ) ) {
+					$attachment_id = attachment_url_to_postid( esc_url( $image_url ) );
+					if ( $attachment_id ) {
+						$form_meta['gf_theme_layers'][$setting] = array(
+							'attachment_id' => $attachment_id,
+							'file_url'      => $image_url,
+						);
+						unset ( $form_meta['gf_theme_layers'][$setting . '_file_url'] );
+						$updated = true;
+						$image_count++;
+					} else {
+						$this->log_debug( __METHOD__ . '(): Could not find the attachment ID for the image url ' . $image_url );
+					}
+				}
+
+			}
+
+			if( $updated ) {
+				\GFFormsModel::update_form_meta( $form['id'], $form_meta );
+			}
+		}
+
+		set_transient( 'gf_conversational_forms_1_3_upgraded_images', $image_count, DAY_IN_SECONDS );
+
+		$this->log_debug( __METHOD__ . '(): Finished upgrading image settings. ' . $image_count . ' images updated.' );
+
 	}
 
 	/**
@@ -236,6 +410,182 @@ class GF_Conversational_Forms extends \GFAddOn {
 			return strtolower( $wp->request );
 		}
 	}
+
+	/**
+	 * Register the conversational form post type.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return void
+	 */
+	public function register_conversational_forms_post_type() {
+
+		$labels = array(
+			'name'                  => _x( 'Conversational Forms', 'Post Type General Name', 'gravityformsconversationalforms' ),
+			'singular_name'         => _x( 'Conversational Form', 'Post Type Singular Name', 'gravityformsconversationalforms' ),
+			'menu_name'             => __( 'Conversational Forms', 'gravityformsconversationalforms' ),
+			'name_admin_bar'        => __( 'Conversational Form', 'gravityformsconversationalforms' ),
+			'archives'              => __( 'Conversational Form Archives', 'gravityformsconversationalforms' ),
+			'attributes'            => __( 'Conversational Form Attributes', 'gravityformsconversationalforms' ),
+			'parent_item_colon'     => __( 'Parent Conversational Form:', 'gravityformsconversationalforms' ),
+			'all_items'             => __( 'All Conversational Forms', 'gravityformsconversationalforms' ),
+			'add_new_item'          => __( 'Add New Conversational Form', 'gravityformsconversationalforms' ),
+			'add_new'               => __( 'Add New', 'gravityformsconversationalforms' ),
+			'new_item'              => __( 'New Conversational Form', 'gravityformsconversationalforms' ),
+			'edit_item'             => __( 'Edit Conversational Form', 'gravityformsconversationalforms' ),
+			'update_item'           => __( 'Update Conversational Form', 'gravityformsconversationalforms' ),
+			'view_item'             => __( 'View Conversational Form', 'gravityformsconversationalforms' ),
+			'view_items'            => __( 'View Conversational Form', 'gravityformsconversationalforms' ),
+			'search_items'          => __( 'Search Conversational Form', 'gravityformsconversationalforms' ),
+			'not_found'             => __( 'Not found', 'gravityformsconversationalforms' ),
+			'not_found_in_trash'    => __( 'Not found in Trash', 'gravityformsconversationalforms' ),
+			'featured_image'        => __( 'Featured Image', 'gravityformsconversationalforms' ),
+			'set_featured_image'    => __( 'Set featured image', 'gravityformsconversationalforms' ),
+			'remove_featured_image' => __( 'Remove featured image', 'gravityformsconversationalforms' ),
+			'use_featured_image'    => __( 'Use as featured image', 'gravityformsconversationalforms' ),
+			'insert_into_item'      => __( 'Insert into Conversational Form', 'gravityformsconversationalforms' ),
+			'uploaded_to_this_item' => __( 'Uploaded to this Conversational Form', 'gravityformsconversationalforms' ),
+			'items_list'            => __( 'Conversational Forms list', 'gravityformsconversationalforms' ),
+			'items_list_navigation' => __( 'Conversational Forms list navigation', 'gravityformsconversationalforms' ),
+			'filter_items_list'     => __( 'Filter Conversational Forms list', 'gravityformsconversationalforms' ),
+		);
+		$args = array(
+			'label'                 => __( 'Conversational Form', 'gravityformsconversationalforms' ),
+			'description'           => __( 'Gravity Forms conversational form', 'gravityformsconversationalforms' ),
+			'labels'                => $labels,
+			'supports'              => array( 'title', 'editor' ),
+			'hierarchical'          => false,
+			'public'                => false,
+			'show_ui'               => false,
+			'show_in_menu'          => false,
+			'menu_position'         => 60,
+			'show_in_admin_bar'     => false,
+			'show_in_nav_menus'     => false,
+			'can_export'            => false,
+			'has_archive'           => false,
+			'exclude_from_search'   => true,
+			'publicly_queryable'    => false,
+			'capability_type'       => 'page',
+			'rewrite'               => false,
+			/**
+			 * Using gf_conversational when plain permalinks are used for backwards compatibility.
+			 */
+			'query_var'             => $this->is_plain_permalinks() ? $this->query_var : 'conversational_form',
+		);
+		register_post_type( 'conversational_form', $args );
+	}
+
+	/**
+	 * Filter the post type URL to remove the post type slug.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param $post_link
+	 * @param $post
+	 * @param $leavename
+	 *
+	 * @return mixed|string|null
+	 */
+	public function conversational_forms_post_type_permalinks( $post_link, $post, $leavename ) {
+		if ( isset( $post->post_type ) && 'conversational_form' == $post->post_type ) {
+			$post_link = home_url( $post->post_name );
+		}
+
+		return $post_link;
+	}
+
+	/**
+	 * Make sure that the slug is unique for the conversational_form post type.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param $slug
+	 * @param $post_ID
+	 * @param $post_status
+	 * @param $post_type
+	 * @param $post_parent
+	 * @param $original_slug
+	 *
+	 * @return mixed|string
+	 */
+	function prevent_slug_duplicates( $slug, $post_ID, $post_status, $post_type, $post_parent, $original_slug ) {
+		$check_post_types = array(
+			'post',
+			'page',
+			'conversational_form'
+		);
+
+		if ( ! in_array( $post_type, $check_post_types ) ) {
+			return $slug;
+		}
+
+		if ( 'conversational_form' == $post_type ) {
+			// Saving a custom_post_type post, check for duplicates in POST or PAGE post types.
+			$post_match = get_page_by_path( $slug, 'OBJECT', 'post' );
+			$page_match = get_page_by_path( $slug, 'OBJECT', 'page' );
+
+			if ( $post_match || $page_match ) {
+				$slug = $this->increment_slug( $slug );
+			}
+		} else {
+			// Saving a POST or PAGE, check for duplicates in conversational_form post type.
+			$custom_post_type_match = get_page_by_path( $slug, 'OBJECT', 'conversational_form' );
+
+			if ( $custom_post_type_match ) {
+				$slug = $this->increment_slug( $slug );
+			}
+		}
+
+		$verified = get_transient( 'gf_conversational_form_slug_verified' );
+		if ( $slug !== $original_slug && $verified !== $slug ) {
+			$slug = wp_unique_post_slug( $slug, $post_ID, $post_status, $post_type, $post_parent );
+			set_transient( 'gf_conversational_form_slug_verified', $slug, 10 );
+		}
+
+		return $slug;
+	}
+
+	/**
+	 * Increment a slug by appending a number to the end or increasing the number at the end.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $slug
+	 * @return string $slug
+	 */
+	public function increment_slug( $slug ) {
+		$slug_parts = explode( '-', $slug );
+		$last_part = array_pop( $slug_parts );
+		if ( is_numeric( $last_part ) ) {
+			$last_part++;
+			$slug_parts[] = $last_part;
+		} else {
+			$slug_parts[] = $last_part;
+			$slug_parts[] = 2;
+		}
+		return implode( '-', $slug_parts );
+
+	}
+
+	/**
+	 * Retrieve the template file for the custom post type.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param $template
+	 *
+	 * @return string
+	 */
+	public function conversational_form_template( $template ) {
+		global $post;
+
+		if ( 'conversational_form' === $post->post_type ) {
+			return dirname( __FILE__ ) . '/includes/theme-layers/layers/views/single-conversational_form.php';
+		}
+
+		return $template;
+	}
+
 
 	// # SCRIPT AND STYLE METHODS --------------------------------------------------------------------------------------------
 
@@ -392,67 +742,6 @@ class GF_Conversational_Forms extends \GFAddOn {
 	}
 
 	/**
-	 * When a matching slug is found for Front-End full-screen display,
-	 * ensure that the Conversational Forms settings are enabled before
-	 * rendering the template.
-	 *
-	 * @since 1.0
-	 *
-	 * @hook gform_full_screen_form_for_display 10 3
-	 *
-	 * @param $form_id
-	 * @param $template
-	 * @param $json_query
-	 *
-	 * @return int
-	 */
-	public function check_if_full_screen_enabled( $form_id, $template, $json_query ) {
-		global $wp;
-
-		$post_slug = $this->get_requested_slug();
-
-		if ( empty( $post_slug ) ) {
-			return null;
-		}
-
-		// Prevent empty values from hijacking the site homepage.
-		if ( empty( $post_slug ) ) {
-			return null;
-		}
-
-		$form_for_display = $json_query->query( $post_slug );
-
-		if ( empty( $form_for_display ) ) {
-			return $form_id;
-		}
-
-		$form = \GFFormsModel::get_form_meta( $form_for_display );
-
-		if ( empty( $form['gf_theme_layers']['enable'] ) ) {
-			return $form_id;
-		}
-
-		return $form_for_display;
-	}
-
-	/**
-	 * Filter the full screen template path.
-	 *
-	 * @since 1.0
-	 *
-	 * @hook gform_full_screen_template_path 10 1
-	 *
-	 * @param $template
-	 *
-	 * @return string
-	 */
-	public function get_full_screen_template_path( $template ) {
-		$new_template = dirname( __FILE__ ) . '/includes/theme-layers/layers/views/class-full-screen-template.php';
-
-		return $new_template;
-	}
-
-	/**
 	 * Retrieve the list of CSS Props from the Theme Layer for usage outside of the main
 	 * output engines.
 	 *
@@ -513,7 +802,7 @@ class GF_Conversational_Forms extends \GFAddOn {
 			return false;
 		}
 
-		if ( ! $this->is_full_screen_page( $settings['form_full_screen_slug'] ) ) {
+		if ( rgar( $settings, 'post_id' ) && ! $this->is_full_screen_page( $settings['post_id'] ) ) {
 			return false;
 		}
 
@@ -521,23 +810,20 @@ class GF_Conversational_Forms extends \GFAddOn {
 	}
 
 	/**
-	 * Helper method to determine if the current page/post matches the full-screen
-	 * slug in the Form Settings.
+	 * Helper method to determine if the current page/post matches the post id
+	 * in the Form Settings.
 	 *
 	 * @since 1.0
+	 * @since 1.3.0 Search by post ID instead of slug.
 	 *
-	 * @param $full_screen_slug
+	 * @param $post_id
 	 *
 	 * @return bool
 	 */
-	private function is_full_screen_page( $full_screen_slug ) {
-		global $wp;
+	private function is_full_screen_page( $post_id ) {
+		global $wp_query;
 
-		$slug = $this->get_requested_slug();
-
-		$slug = empty( $slug ) ? get_post_field( 'post_name', get_post() ) : $slug;
-
-		return $slug == $full_screen_slug;
+		return $wp_query->queried_object_id == $post_id;
 	}
 
 
@@ -564,66 +850,39 @@ class GF_Conversational_Forms extends \GFAddOn {
 		return $allowed_file_types;
 	}
 
-	public function sanitize_permalink( $field, $value ) {
-		return sanitize_title( $value );
-	}
-
 	/**
-	 * When a conversational form is duplicated, increment the slug to prevent duplicate permalinks.
+	 * When a form is duplicated, create a new conversational form post for the duplicate.
 	 *
-	 * @since 1.0
+	 * @since 1.3.0
 	 *
-	 * @param int $form_id The form being duplicated.
-	 * @param int $new_id  The new form.
-	 *
-	 * @return void
+	 * @param int $form_id
+	 * @param int $new_id
 	 */
-	public function prevent_duplicate_permalinks( $form_id, $new_id ) {
-		$form_meta = \GFFormsModel::get_form_meta( $form_id );
-		if ( rgars(  $form_meta, 'gf_theme_layers/form_full_screen_slug' ) ) {
-			$full_screen_slug = $form_meta['gf_theme_layers']['form_full_screen_slug'];
-			// if slug ends with '-' followed by a digit, increment the digit
-			if ( preg_match( '/-\d+$/', $full_screen_slug ) ) {
-				// if slug ends with -+digit, increment the digit
-				$count = 1;
-				$new_slug = $this->increment_slug( $full_screen_slug, $count );
-				// If new slug is not unique, increment the count until a unique slug is created.
-				while ( ! $this->is_unique_slug( $new_slug ) ) {
-					$count++;
-					$new_slug = $this->increment_slug( $full_screen_slug, $count );
-				}
-			} else {
-				$count = 1;
-				$new_slug = $full_screen_slug . '-' . $count;
-				// If new slug is not unique, increment the count until a unique slug is created.
-				while ( ! $this->is_unique_slug( $new_slug ) ) {
-					$count++;
-					$new_slug = $full_screen_slug . '-' . $count;
-				}
+	public function create_post_for_duplicate( $form_id, $new_id ) {
+		$form_meta     = \GFFormsModel::get_form_meta( $form_id );
+		$new_form_meta = \GFFormsModel::get_form_meta( $new_id );
 
-			}
-
-			$new_meta = \GFFormsModel::get_form_meta( $new_id );
-
-			$new_meta['gf_theme_layers']['form_full_screen_slug'] = $new_slug;
-			\GFFormsModel::update_form_meta( $new_id, $new_meta );
+		if ( ! rgars( $form_meta, 'gf_theme_layers/post_id' ) ) {
+			// This form doesn't have a conversational form post, so we don't need to do anything.
+			return;
 		}
-	}
 
-	/**
-	 * Increase the number at the end of a slug.
-	 *
-	 * @since 1.0
-	 *
-	 * @param string $slug  Slug to increment
-	 * @param int    $count Current count
-	 *
-	 * @return array|string|string[]|null
-	 */
-	public function increment_slug( $slug, $count ) {
-		return preg_replace_callback( '/\d+$/', function( $matches ) use ( &$count ) {
-			return $matches[0] + $count;
-		}, $slug );
+		$original_post = get_post( $form_meta['gf_theme_layers']['post_id'] );
+
+		// Make a new post.
+		$post_id = wp_insert_post( array(
+			'post_title'  => $new_form_meta['title'],
+			'post_type'   => 'conversational_form',
+			'post_status' => 'publish',
+			'post_name'   => $original_post->post_name,
+		) );
+
+		// Save the post id to the form meta.
+		$new_form_meta['gf_theme_layers']['post_id'] = $post_id;
+		GFFormsModel::update_form_meta( $new_id, $new_form_meta );
+
+		// Save the form id to the post meta.
+		update_post_meta( $post_id, 'gf_form_id', $new_id );
 	}
 
 	/**
@@ -688,6 +947,8 @@ class GF_Conversational_Forms extends \GFAddOn {
 	public function theme_layer_settings_fields() {
 		$file_upload_allowed_file_types = $this->get_file_upload_allowed_file_types();
 		$form_id                        = rgget( 'id' );
+		$form                           = \GFFormsModel::get_form_meta( $form_id );
+
 		return array(
 			'conversational_forms_general' => array(
 				'title'       => __( 'Conversational Forms', 'gravityformsconversationalforms' ),
@@ -698,26 +959,21 @@ class GF_Conversational_Forms extends \GFAddOn {
 					// Note: all fields below are conditional on this being enabled.
 					array(
 						'name'          => 'enable',
-						'label'         => __( 'Enable Conversational Page For Form', 'gravityformsconversationalforms' ),
-						'description'   => __( 'This form will continue to display as normal when embedded anywhere on your site, but will display in distraction-free conversational mode at this URL.', 'gravityformsconversationalforms' ),
+						'label'         => __( 'Enable Conversational Page', 'gravityformsconversationalforms' ),
+						'description'   => __( 'Enable a distraction-free conversational page for this form at a unique URL.  The form will continue to display as normal when embedded anywhere else on your site.', 'gravityformsconversationalforms' ),
 						'type'          => 'toggle',
 						'default_value' => false,
+						'save_callback' => array( $this, 'maybe_delete_post' ),
 						'disabled'      => GFCommon::is_legacy_markup_enabled( $form_id ),
-						''
 					),
 
-					// The slug used to display the form as Full Screen.
 					array(
-						'name'                      => 'form_full_screen_slug',
-						'label'                     => __( 'Permalink', 'gravityformsconversationalforms' ),
-						'type'                      => 'permalink',
-						'input_prefix'              => trailingslashit( site_url() ) . ( $this->is_plain_permalinks() ? '?' . $this->query_var . '=' : '' ),
-						'action_button'             => true,
-						'action_button_icon'        => 'external-link',
-						'action_button_icon_prefix' => 'gform-icon',
-						'action_button_text'        => __( 'View Form', 'gravityformsconversationalforms' ),
+						'name'                      => 'page_title',
+						'label'                     => __( 'Conversational Page Title', 'gravityformsconversationalforms' ),
+						'type'                      => 'text',
 						'required'                  => true,
-						'save_callback'             => array( $this, 'sanitize_permalink' ),
+						'save_callback'             => array( $this, 'create_post' ),
+						'default_value'             => rgar( $form, 'title' ) ? $form['title'] : '',
 						'dependency'                => array(
 							'live'   => true,
 							'fields' => array(
@@ -728,6 +984,33 @@ class GF_Conversational_Forms extends \GFAddOn {
 							),
 						),
 					),
+
+					// The slug used to display the form as Full Screen.
+					array(
+						'name'                      => 'form_full_screen_slug',
+						'label'                     => __( 'Conversational Page URL', 'gravityformsconversationalforms' ),
+						'description'               => __( 'The URL where this form will be displayed in conversational mode.  You can edit the URL after you save your settings and the page has been created.', 'gravityformsconversationalforms' ),
+						'type'                      => 'permalink',
+						'input_prefix'              => trailingslashit( home_url() ) . ( $this->is_plain_permalinks() ? '?' . $this->query_var . '=' : '' ),
+						'action_button'             => true,
+						'action_button_icon'        => 'external-link',
+						'action_button_icon_prefix' => 'gform-icon',
+						'action_button_text'        => __( 'View Form', 'gravityformsconversationalforms' ),
+						'required'                  => false,
+						'value_callback'            => $this->get_post_url(),
+						'save_callback'             => array( $this, 'update_permalink' ),
+						'default_value'             => rgar( $form, 'title' ) ? sanitize_title( $form['title'] ) : '',
+						'dependency'                => array(
+							'live'   => true,
+							'fields' => array(
+								array(
+									'field'  => 'enable',
+									'values' => array( true, '1' ),
+								),
+							),
+						),
+					),
+
 				),
 			),
 
@@ -1195,6 +1478,135 @@ class GF_Conversational_Forms extends \GFAddOn {
 	}
 
 	/**
+	 * When the "enable" field is saved, delete the post if it exists.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param $field
+	 * @param $value
+	 *
+	 * @return bool
+	 */
+	public function maybe_delete_post( $field, $value ) {
+		if( 1 !== intval( $value ) ) {
+			$form_id = rgget( 'id' );
+			$form_meta = \GFFormsModel::get_form_meta( $form_id );
+
+			if ( rgars( $form_meta, 'gf_theme_layers/post_id' ) ) {
+				$post_id = $form_meta['gf_theme_layers']['post_id'];
+				wp_delete_post( $post_id );
+
+				$form_meta['gf_theme_layers']['post_id'] = '';
+				GFFormsModel::update_form_meta( $form_id, $form_meta );
+			}
+		}
+
+		return $value;
+	}
+
+	/**
+	 * When the "page title" field is saved, create a new post for the form.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param $field
+	 * @param $value
+	 *
+	 * @return string The post title.
+	 */
+	public function create_post( $field, $value ) {
+		$form_id = rgget( 'id' );
+		$form_meta = \GFFormsModel::get_form_meta( $form_id );
+
+		// We already have a post, so let's update it.
+		if ( rgars( $form_meta, 'gf_theme_layers/post_id' ) ) {
+			$post_id          = $form_meta['gf_theme_layers']['post_id'];
+			$post             = get_post( $post_id );
+
+			if ( $post->post_title !== $value ) {
+				$post->post_title = $value;
+				// Prevent unneeded slug checks that causes issues saving the conversational forms settings.
+				remove_filter( 'wp_unique_post_slug', array( $this, 'prevent_slug_duplicates' ), 10, 6 );
+				remove_filter( 'wp_unique_post_slug_is_bad_flat_slug', array( $this, 'is_bad_flat_slug' ), 10, 4 );
+				remove_filter( 'wp_unique_post_slug_is_bad_hierarchical_slug', array( $this, 'is_bad_hierarchical_slug' ), 10, 5 );
+				wp_update_post( $post );
+			}
+			return $post->post_title;
+		}
+
+		// We need to make a new post.
+		$post_id = wp_insert_post( array(
+			'post_title'  => $value,
+			'post_type'   => 'conversational_form',
+			'post_status' => 'publish',
+		) );
+
+		// Add the post id to POST.
+		$form_meta['gf_theme_layers']['post_id'] = $post_id;
+		GFFormsModel::update_form_meta( $form_id, $form_meta );
+
+		// Save the form id to the post meta.
+		update_post_meta( $post_id, 'gf_form_id', $form_id );
+
+		$post = get_post( $post_id );
+		return $post->post_title;
+	}
+
+	/**
+	 * When the "permalink" field is saved, update the post.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param $field
+	 * @param $value
+	 *
+	 * @return string The post slug.
+	 */
+	public function update_permalink( $field, $value ) {
+		$form_id = rgget( 'id' );
+		$form_meta = \GFFormsModel::get_form_meta( $form_id );
+
+		if ( ! rgars( $form_meta, 'gf_theme_layers/post_id' ) ) {
+			return '';
+		}
+
+		$post_id = $form_meta['gf_theme_layers']['post_id'];
+		$post    = get_post( $post_id );
+		$slug    = $post->post_name;
+
+		if ( $slug == $value ) {
+			return $post->post_name;
+		}
+
+		// Update the post name.
+		$post->post_name = sanitize_title( $value );
+		wp_update_post( $post );
+
+		return $post->post_name;
+	}
+
+	/**
+	 * Get the URL for a post.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return callable
+	 */
+	public function get_post_url( ) {
+		$form_id = rgget( 'id' );
+		$form_meta = \GFFormsModel::get_form_meta( $form_id );
+
+		if ( rgars( $form_meta, 'gf_theme_layers/post_id' ) ) {
+			$post_id = $form_meta['gf_theme_layers']['post_id'];
+			$post    = get_post( $post_id );
+
+			return $post->post_name;
+		}
+
+		return '';
+	}
+
+	/**
 	 * The fields/views to override for this theme layer.
 	 *
 	 * @since 1.0
@@ -1419,13 +1831,19 @@ class GF_Conversational_Forms extends \GFAddOn {
 			'foundation' => array(
 				array(
 					'gravity_forms_conversational_foundation',
-					"$base_url/assets/css/dist/theme-foundation.css"
+					"$base_url/assets/css/dist/theme-foundation.css",
+					array( 'gravity_forms_theme_reset',
+					       'gravity_forms_theme_foundation',
+					),
 				),
 			),
 			'framework' => array(
 				array(
 					'gravity_forms_conversational_theme',
-					"$base_url/assets/css/dist/theme-framework.css"
+					"$base_url/assets/css/dist/theme-framework.css",
+					array( 'gravity_forms_theme_framework',
+					       'gravity_forms_orbital_theme',
+					),
 				),
 			),
 		);
@@ -1530,16 +1948,20 @@ class GF_Conversational_Forms extends \GFAddOn {
 			return $form_actions;
 		}
 
-		// Return early if full screen slug is empty.
-		if ( empty( $form['gf_theme_layers']['form_full_screen_slug'] ) ) {
+		// Return early if there is no post id.
+		if ( empty( $form['gf_theme_layers']['post_id'] ) || ! get_post( intval( $form['gf_theme_layers']['post_id'] ) ) ) {
 			return $form_actions;
 		}
+
+		$post = get_post( intval( $form['gf_theme_layers']['post_id'] ) );
+
+		$permalink = $this->is_plain_permalinks() ? trailingslashit( get_bloginfo( 'url' ) ) . '?gf_conversational=' . $post->post_name : get_permalink( $post );
 
 		// Add conversational preview before duplicate.
 		$form_actions['view_conversational'] = array(
 			'label'        => esc_html__( 'View Conversational Form', 'gravityforms' ),
 			'aria-label'   => esc_html__( 'View this conversational form', 'gravityforms' ),
-			'url'          => trailingslashit( site_url() ) . $form['gf_theme_layers']['form_full_screen_slug'],
+			'url'          => $permalink,
 			'menu_class'   => 'gf_form_toolbar_view_conversational',
 			'capabilities' => 'gravityforms_preview_forms',
 			'target'       => '_blank',
@@ -1547,6 +1969,33 @@ class GF_Conversational_Forms extends \GFAddOn {
 		);
 
 		return $form_actions;
+	}
+
+	/**
+	 * When you import a form with conversational forms enabled, create a new post for the form.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param $forms
+	 */
+	public function create_post_after_import( $forms ) {
+		foreach ( $forms as $form ) {
+			if ( ! rgars( $form, 'gf_theme_layers/enable' ) && ! rgars( $form, 'gf_theme_layers/post_id' ) ) {
+				continue;
+			}
+
+			$post_id = wp_insert_post( array(
+				'post_title'  => $form['title'],
+				'post_type'   => 'conversational_form',
+				'post_status' => 'publish',
+			) );
+
+			$form['gf_theme_layers']['post_id'] = $post_id;
+			GFFormsModel::update_form_meta( $form['id'], $form );
+
+			// Save the form id to the post meta.
+			update_post_meta( $post_id, 'gf_form_id', $form['id'] );
+		}
 	}
 
 	/**

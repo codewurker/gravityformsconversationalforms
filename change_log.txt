@@ -1,6 +1,13 @@
+### 1.3.0 | 2024-04-23
+- Added a `conversational_form` post type to better handle permalinks and templates.
+- Fixed a conflict with an upcoming change that will be released in Gravity Forms 2.9 that prevents the Save & Continue button from working correctly when the Enter key is pressed.
+- Fixed an issue where multifile uploads were not working correctly on iOS Safari.
+- Updated the data structure for how media uploads are stored in the form.
+
 ### 1.2.0 | 2023-11-29
 - Fixed a bug where a form that requires login still shows the welcome screen to logged-out users.
-- API: Updated styles and refactored the Conversational Forms Add-On CSS API to be compatible with the CSS API in Gravity Forms 2.8.
+- API: Updated styles and refactored the Conversational Forms Add-On CSS API to work with the updated form Theme Framework CSS API and to be consistent.
+- Adds capabilities to the GF_Conversational_Forms class.
 
 ### 1.1.0 | 2023-10-05
 - Updated `is_conversational_form()` to the global namespace so it can be used in other add-ons.

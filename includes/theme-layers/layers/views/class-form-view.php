@@ -24,17 +24,15 @@ class Form_View extends View {
 	 * @return bool
 	 */
 	public function should_override( $form, $form_id, $block_settings = array() ) {
-		if ( \GFCommon::is_preview() ) {
+		if( is_admin() ) {
 			return false;
 		}
 
-		global $wp;
+		global $wp_query;
 
-		$full_screen_slug = $this->get_setting( 'form_full_screen_slug', $form_id );
+		$post_id = $this->get_setting( 'post_id', $form_id );
 
-		$slug = GF_Conversational_Forms::get_instance()->get_requested_slug();
-
-		if ( ! $this->get_setting( 'enable', $form_id ) || ( $slug != $full_screen_slug ) ) {
+		if ( ! $this->get_setting( 'enable', $form_id ) || ( $wp_query->queried_object_id != $post_id ) ) {
 			return false;
 		}
 

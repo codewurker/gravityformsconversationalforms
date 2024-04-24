@@ -61,6 +61,16 @@ class Permalink extends Fields\Base {
 			$this->after_input = call_user_func( $this->after_input, $value, $this );
 		}
 
+		// If we do not have a post_id, disable the input.
+		$attributes = $this->get_attributes();
+		$form_id    = rgget( 'id' );
+		$form_meta  = \GFFormsModel::get_form_meta( $form_id );
+		if ( rgars( $form_meta, 'gf_theme_layers/post_id' ) ) {
+			unset( $attributes['disabled'] );
+		} else {
+			$attributes['disabled'] = 'disabled';
+		}
+
 		// Prepare markup.
 		// Display description.
 		$html = $this->get_description();
@@ -73,7 +83,7 @@ class Permalink extends Fields\Base {
 			esc_attr( $this->name ),
 			$value ? esc_attr( htmlspecialchars( $value, ENT_QUOTES ) ) : '',
 			$this->get_describer() ? sprintf( 'aria-describedby="%s"', $this->get_describer() ) : '',
-			implode( ' ', $this->get_attributes() ),
+			implode( ' ', $attributes ),
 			isset( $this->append ) ? sprintf( '<span class="gform-settings-field__text-append">%s</span>', esc_html( $this->append ) ) : '',
 			$this->get_error_icon(),
 			$this->get_addon_wrapper_open(),
@@ -137,6 +147,22 @@ class Permalink extends Fields\Base {
 		return '</div>';
 	}
 
+	public function get_value() {
+		$form      = rgget( 'id' );
+		$form_meta = \GFFormsModel::get_form_meta( $form );
+
+		if( rgars( $form_meta, 'gf_theme_layers/post_id' ) ) {
+			$post = get_post( $form_meta['gf_theme_layers']['post_id'] );
+			return $post->post_name;
+		} else {
+			if ( $this->default_value ) {
+				return $this->default_value;
+			}
+		}
+
+		return '';
+	}
+
 	/**
 	 * Get the markup for the input prefix.
 	 *
@@ -179,8 +205,12 @@ class Permalink extends Fields\Base {
 			return null;
 		}
 
-		$current_value = $this->get_value();
-		if ( empty( $current_value ) ) {
+		$form      = rgget( 'id' );
+		$form_meta = \GFFormsModel::get_form_meta( $form );
+
+		if( rgars( $form_meta, 'gf_theme_layers/post_id' ) ) {
+			$post = get_post( $form_meta['gf_theme_layers']['post_id'] );
+		} else {
 			return '';
 		}
 
@@ -193,91 +223,8 @@ class Permalink extends Fields\Base {
 			$this->action_button_icon,
 			$this->input_prefix,
 			$this->action_button_text ? sprintf( '<span class="gform-button__text gform-button__text--inactive" data-js="button-active-text">%s</span>', $this->action_button_text ) : null,
-			$current_value
+			$post->post_name,
 		);
-	}
-
-	// # VALIDATION METHODS --------------------------------------------------------------------------------------------
-
-	/**
-	 * Validate posted field value.
-	 *
-	 * @since 1.0
-	 *
-	 * @param string $value Posted field value.
-	 */
-	public function do_validation( $value ) {
-
-		// If field is required and value is missing, set field error.
-		if ( $this->required && rgblank( $value ) ) {
-			$this->set_error( rgobj( $this, 'error_message' ) );
-		}
-
-		// Sanitize posted value.
-		$sanitized_value = sanitize_text_field( $value );
-
-		// If posted and sanitized values do not match, add field error.
-		if ( $value !== $sanitized_value ) {
-
-			// Prepare correction script.
-			$double_encoded_safe_value = htmlspecialchars( htmlspecialchars( $sanitized_value, ENT_QUOTES ), ENT_QUOTES );
-			$script                    = sprintf(
-				'jQuery("input[name=\"%s_%s\"]").val(jQuery(this).data("safe"));',
-				$this->settings->get_input_name_prefix(),
-				$this->name
-			);
-
-			// Prepare message.
-			$message = sprintf(
-				"%s <a href='javascript:void(0);' onclick='%s' data-safe='%s'>%s</a>",
-				esc_html__( 'The text you have entered is not valid. For security reasons, some characters are not allowed. ', 'gravityforms' ),
-				htmlspecialchars( $script, ENT_QUOTES ),
-				$double_encoded_safe_value,
-				esc_html__( 'Fix it', 'gravityforms' )
-			);
-
-			// Set field error.
-			$this->set_error( $message );
-
-		}
-
-		if ( ! $this->is_permalink_available( $value ) ) {
-			// Prepare message.
-			$message = esc_html__( 'The permalink you entered is already being used by another page on your site.  Please enter a different permalink.', 'gravityforms' );
-
-			// Set field error.
-			$this->set_error( $message );
-		}
-
-	}
-
-	/**
-	 * Check if the permalink is available.
-	 *
-	 * @param string $slug
-	 *
-	 * @return bool
-	 */
-	public function is_permalink_available( $slug ) {
-		$form      = rgget( 'id' );
-		$form_meta = \GFFormsModel::get_form_meta( $form );
-		if ( rgars(  $form_meta, 'gf_theme_layers/form_full_screen_slug' ) ) {
-			// if the current value is the same as the new value, then the permalink is available
-			if ( $slug == $form_meta['gf_theme_layers']['form_full_screen_slug'] ) {
-				return true;
-			}
-		}
-
-		$url      = $this->input_prefix . $slug;
-		$response = wp_remote_get( $url, array( 'sslverify' => false ) );
-		if ( is_wp_error( $response ) ) {
-			( new \Gravity_Forms\Gravity_Forms_Conversational_Forms\GF_Conversational_Forms )->log_debug( __METHOD__ . '(): Error checking if permalink is available. ' . $response->get_error_message() );
-			return true;
-		}
-		if ( rgar( $response['response'], 'code' ) && '404' == $response['response']['code'] ) {
-			return true;
-		}
-		return false;
 	}
 
 }

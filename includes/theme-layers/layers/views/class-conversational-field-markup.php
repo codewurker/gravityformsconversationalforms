@@ -14,7 +14,7 @@ use GFAPI;
 class Conversational_Field_View extends View {
 
 	/**
-	 * Only override the markup if convo forms is enabled and we're viewing the conversational form slug.
+	 * Only override the markup if convo forms is enabled and we're viewing the conversational form CPT.
 	 *
 	 * @param object $field          The field object.
 	 * @param int    $form_id        The form ID.
@@ -24,13 +24,15 @@ class Conversational_Field_View extends View {
 	 * @since 1.0
 	 */
 	public function should_override( $field, $form_id, $block_settings = array() ) {
-		global $wp;
+		if( is_admin() ) {
+			return false;
+		}
 
-		$full_screen_slug = $this->get_setting( 'form_full_screen_slug', $form_id );
+		global $wp_query;
 
-		$slug = GF_Conversational_Forms::get_instance()->get_requested_slug();
+		$post_id = $this->get_setting( 'post_id', $form_id );
 
-		if ( ! $this->get_setting( 'enable', $form_id ) || ( $slug != $full_screen_slug ) ) {
+		if ( ! $this->get_setting( 'enable', $form_id ) || ( $wp_query->queried_object_id != $post_id ) ) {
 			return false;
 		}
 

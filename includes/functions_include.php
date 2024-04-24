@@ -18,21 +18,13 @@ if ( ! function_exists( 'is_conversational_form' ) ) {
 			return $cached[ $form['id'] ];
 		}
 
-		global $wp;
-
-		$is_plain  = get_option( 'permalink_structure' ) == '';
-		$query_var = \Gravity_Forms\Gravity_Forms_Conversational_Forms\GF_Conversational_Forms::QUERY_VAR;
-
-		if ( $is_plain && isset( $wp->query_vars[ $query_var ] ) ) {
-			$slug = strtolower( $wp->query_vars[ $query_var ] );
-		} else {
-			$slug = strtolower( $wp->request );
-		}
+		global $wp_query;
 
 		if (
 			! empty( $form['gf_theme_layers']['enable'] ) &&
-			! empty( $form['gf_theme_layers']['form_full_screen_slug'] ) &&
-			$form['gf_theme_layers']['form_full_screen_slug'] === $slug
+			! empty( $form['gf_theme_layers']['post_id'] ) &&
+			$form['gf_theme_layers']['post_id'] === $wp_query->queried_object_id &&
+			$wp_query->post->post_type == 'conversational_form'
 		) {
 			$cached[ $form['id'] ] = true;
 

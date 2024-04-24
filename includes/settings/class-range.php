@@ -17,10 +17,6 @@ class Range extends Base {
 	 */
 	public $type = 'range';
 
-	protected $min;
-
-	protected $max;
-
 	protected $step;
 
 	protected $show_value;

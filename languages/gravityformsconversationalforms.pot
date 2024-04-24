@@ -1,15 +1,15 @@
-# Copyright (C) 2023 Gravity Forms
+# Copyright (C) 2024 Gravity Forms
 # This file is distributed under the GPL-3.0+.
 msgid ""
 msgstr ""
-"Project-Id-Version: Gravity Forms Conversational Forms Add-On 1.2.0\n"
+"Project-Id-Version: Gravity Forms Conversational Forms Add-On 1.3.0\n"
 "Report-Msgid-Bugs-To: https://gravityforms.com/support\n"
 "Last-Translator: Gravity Forms <support@gravityforms.com>\n"
 "Language-Team: Gravity Forms <support@gravityforms.com>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2023-11-29T18:26:16+00:00\n"
+"POT-Creation-Date: 2024-04-23T16:15:01+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.8.1\n"
 "X-Domain: gravityformsconversationalforms\n"
@@ -32,220 +32,337 @@ msgid "Gravity Forms"
 msgstr ""
 
 #. Translators: &#9166;: Symbol for enter key on keyboard.
-#: class-gf-conversational-forms.php:156
-#: includes/theme-layers/layers/views/class-conversational-field-markup.php:69
+#: class-gf-conversational-forms.php:171
+#: includes/theme-layers/layers/views/class-conversational-field-markup.php:71
 msgid "Press Enter"
 msgstr ""
 
-#: class-gf-conversational-forms.php:337
-msgid "Unknown error. Please try again"
-msgstr ""
-
-#: class-gf-conversational-forms.php:338
-msgid "Use Shift + Enter to add line breaks"
-msgstr ""
-
-#: class-gf-conversational-forms.php:339
-msgid "There was a problem with your submission. At least one field must be filled out."
-msgstr ""
-
-#: class-gf-conversational-forms.php:693
+#: class-gf-conversational-forms.php:424
+msgctxt "Post Type General Name"
 msgid "Conversational Forms"
 msgstr ""
 
-#: class-gf-conversational-forms.php:701
-msgid "Enable Conversational Page For Form"
+#: class-gf-conversational-forms.php:425
+msgctxt "Post Type Singular Name"
+msgid "Conversational Form"
 msgstr ""
 
-#: class-gf-conversational-forms.php:702
-msgid "This form will continue to display as normal when embedded anywhere on your site, but will display in distraction-free conversational mode at this URL."
+#: class-gf-conversational-forms.php:426
+#: class-gf-conversational-forms.php:954
+msgid "Conversational Forms"
 msgstr ""
 
-#: class-gf-conversational-forms.php:712
-msgid "Permalink"
+#: class-gf-conversational-forms.php:427
+#: class-gf-conversational-forms.php:453
+msgid "Conversational Form"
 msgstr ""
 
-#: class-gf-conversational-forms.php:718
+#: class-gf-conversational-forms.php:428
+msgid "Conversational Form Archives"
+msgstr ""
+
+#: class-gf-conversational-forms.php:429
+msgid "Conversational Form Attributes"
+msgstr ""
+
+#: class-gf-conversational-forms.php:430
+msgid "Parent Conversational Form:"
+msgstr ""
+
+#: class-gf-conversational-forms.php:431
+msgid "All Conversational Forms"
+msgstr ""
+
+#: class-gf-conversational-forms.php:432
+msgid "Add New Conversational Form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:433
+msgid "Add New"
+msgstr ""
+
+#: class-gf-conversational-forms.php:434
+msgid "New Conversational Form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:435
+msgid "Edit Conversational Form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:436
+msgid "Update Conversational Form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:437
+#: class-gf-conversational-forms.php:438
+msgid "View Conversational Form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:439
+msgid "Search Conversational Form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:440
+msgid "Not found"
+msgstr ""
+
+#: class-gf-conversational-forms.php:441
+msgid "Not found in Trash"
+msgstr ""
+
+#: class-gf-conversational-forms.php:442
+msgid "Featured Image"
+msgstr ""
+
+#: class-gf-conversational-forms.php:443
+msgid "Set featured image"
+msgstr ""
+
+#: class-gf-conversational-forms.php:444
+msgid "Remove featured image"
+msgstr ""
+
+#: class-gf-conversational-forms.php:445
+msgid "Use as featured image"
+msgstr ""
+
+#: class-gf-conversational-forms.php:446
+msgid "Insert into Conversational Form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:447
+msgid "Uploaded to this Conversational Form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:448
+msgid "Conversational Forms list"
+msgstr ""
+
+#: class-gf-conversational-forms.php:449
+msgid "Conversational Forms list navigation"
+msgstr ""
+
+#: class-gf-conversational-forms.php:450
+msgid "Filter Conversational Forms list"
+msgstr ""
+
+#: class-gf-conversational-forms.php:454
+msgid "Gravity Forms conversational form"
+msgstr ""
+
+#: class-gf-conversational-forms.php:687
+msgid "Unknown error. Please try again"
+msgstr ""
+
+#: class-gf-conversational-forms.php:688
+msgid "Use Shift + Enter to add line breaks"
+msgstr ""
+
+#: class-gf-conversational-forms.php:689
+msgid "There was a problem with your submission. At least one field must be filled out."
+msgstr ""
+
+#: class-gf-conversational-forms.php:962
+msgid "Enable Conversational Page"
+msgstr ""
+
+#: class-gf-conversational-forms.php:963
+msgid "Enable a distraction-free conversational page for this form at a unique URL.  The form will continue to display as normal when embedded anywhere else on your site."
+msgstr ""
+
+#: class-gf-conversational-forms.php:972
+msgid "Conversational Page Title"
+msgstr ""
+
+#: class-gf-conversational-forms.php:991
+msgid "Conversational Page URL"
+msgstr ""
+
+#: class-gf-conversational-forms.php:992
+msgid "The URL where this form will be displayed in conversational mode.  You can edit the URL after you save your settings and the page has been created."
+msgstr ""
+
+#: class-gf-conversational-forms.php:998
 msgid "View Form"
 msgstr ""
 
-#: class-gf-conversational-forms.php:735
+#: class-gf-conversational-forms.php:1018
 msgid "Form Design"
 msgstr ""
 
-#: class-gf-conversational-forms.php:741
+#: class-gf-conversational-forms.php:1024
 msgid "Layout"
 msgstr ""
 
-#: class-gf-conversational-forms.php:748
+#: class-gf-conversational-forms.php:1031
 msgid "Left Aligned"
 msgstr ""
 
-#: class-gf-conversational-forms.php:753
+#: class-gf-conversational-forms.php:1036
 msgid "Center"
 msgstr ""
 
-#: class-gf-conversational-forms.php:758
+#: class-gf-conversational-forms.php:1041
 msgid "Right Aligned"
 msgstr ""
 
-#: class-gf-conversational-forms.php:767
+#: class-gf-conversational-forms.php:1050
 msgid "Background Color"
 msgstr ""
 
-#: class-gf-conversational-forms.php:785
+#: class-gf-conversational-forms.php:1068
 msgid "Form Accent Color"
 msgstr ""
 
-#: class-gf-conversational-forms.php:786
+#: class-gf-conversational-forms.php:1069
 msgid "Used for various form elements, such as buttons and progress bars."
 msgstr ""
 
-#: class-gf-conversational-forms.php:803
+#: class-gf-conversational-forms.php:1086
 msgid "Input Accent Color"
 msgstr ""
 
-#: class-gf-conversational-forms.php:804
+#: class-gf-conversational-forms.php:1087
 msgid "Used for aspects of individual form inputs, such as checkmarks and dropdown choices."
 msgstr ""
 
-#: class-gf-conversational-forms.php:821
+#: class-gf-conversational-forms.php:1104
 msgid "Text Color"
 msgstr ""
 
-#: class-gf-conversational-forms.php:835
+#: class-gf-conversational-forms.php:1118
 msgid "Enable Logo"
 msgstr ""
 
-#: class-gf-conversational-forms.php:843
+#: class-gf-conversational-forms.php:1126
 msgid "Logo"
 msgstr ""
 
-#: class-gf-conversational-forms.php:862
+#: class-gf-conversational-forms.php:1145
 msgid "Logo Link"
 msgstr ""
 
-#: class-gf-conversational-forms.php:879
+#: class-gf-conversational-forms.php:1162
 msgid "Enable Background Image"
 msgstr ""
 
-#: class-gf-conversational-forms.php:887
+#: class-gf-conversational-forms.php:1170
 msgid "Background Image"
 msgstr ""
 
-#: class-gf-conversational-forms.php:907
+#: class-gf-conversational-forms.php:1190
 msgid "Background Image Brightness"
 msgstr ""
 
-#: class-gf-conversational-forms.php:908
+#: class-gf-conversational-forms.php:1191
 msgid "Adjust the brightness of your background image to ensure your form elements are legible when displayed against it. (Lower values result in a darker background)."
 msgstr ""
 
-#: class-gf-conversational-forms.php:940
+#: class-gf-conversational-forms.php:1223
 msgid "Welcome Screen"
 msgstr ""
 
-#: class-gf-conversational-forms.php:947
+#: class-gf-conversational-forms.php:1230
 msgid "Enable Welcome Screen"
 msgstr ""
 
-#: class-gf-conversational-forms.php:955
+#: class-gf-conversational-forms.php:1238
 msgid "Heading"
 msgstr ""
 
-#: class-gf-conversational-forms.php:971
+#: class-gf-conversational-forms.php:1254
 msgid "Description"
 msgstr ""
 
-#: class-gf-conversational-forms.php:987
+#: class-gf-conversational-forms.php:1270
 msgid "Start Button Text"
 msgstr ""
 
-#: class-gf-conversational-forms.php:990
+#: class-gf-conversational-forms.php:1273
 msgid "Start"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1005
+#: class-gf-conversational-forms.php:1288
 msgid "Image"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1024
+#: class-gf-conversational-forms.php:1307
 msgid "Image Alternate Text"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1050
+#: class-gf-conversational-forms.php:1333
 msgid "Buttons"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1054
+#: class-gf-conversational-forms.php:1337
 msgid "Continue Button Text"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1057
+#: class-gf-conversational-forms.php:1340
 msgid "Continue"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1072
+#: class-gf-conversational-forms.php:1355
 msgid "Footer"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1078
+#: class-gf-conversational-forms.php:1361
 msgid "Footer Background Color"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1079
-#: class-gf-conversational-forms.php:1127
-#: class-gf-conversational-forms.php:1147
+#: class-gf-conversational-forms.php:1362
+#: class-gf-conversational-forms.php:1410
+#: class-gf-conversational-forms.php:1430
 msgid "By default, this color is generated from the form accent color selected above. Use this setting if you want to override the automatically-generated color."
 msgstr ""
 
-#: class-gf-conversational-forms.php:1090
+#: class-gf-conversational-forms.php:1373
 msgid "Enable Progress Bar"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1098
+#: class-gf-conversational-forms.php:1381
 msgid "Progression Type"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1105
+#: class-gf-conversational-forms.php:1388
 msgid "Percentage"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1109
+#: class-gf-conversational-forms.php:1392
 msgid "Proportion"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1126
+#: class-gf-conversational-forms.php:1409
 msgid "Bar Background Color"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1146
+#: class-gf-conversational-forms.php:1429
 msgid "Bar Foreground Color"
 msgstr ""
 
-#: class-gf-conversational-forms.php:1187
+#: class-gf-conversational-forms.php:1470
 msgid "This form is using legacy markup, which is not supported in Conversational Forms.  Please turn off Legacy Markup in the form settings to enable a Conversational Page for this form."
 msgstr ""
 
-#: class-gf-conversational-forms.php:1482
+#: class-gf-conversational-forms.php:1900
 msgid "Please enter a valid value."
 msgstr ""
 
-#: includes/theme-layers/layers/views/class-full-screen-template.php:108
+#: includes/theme-layers/layers/views/single-conversational_form.php:104
 msgid "Sorry. You must be logged in to view this form."
 msgstr ""
 
 #. Translators: %s: The percentage of the form being completed.
-#: includes/theme-layers/layers/views/class-full-screen-template.php:181
+#: includes/theme-layers/layers/views/single-conversational_form.php:178
 msgid "%s Completed!"
 msgstr ""
 
-#: includes/theme-layers/layers/views/class-full-screen-template.php:216
-#: includes/theme-layers/layers/views/class-full-screen-template.php:220
+#: includes/theme-layers/layers/views/single-conversational_form.php:213
+#: includes/theme-layers/layers/views/single-conversational_form.php:217
 msgid "Previous"
 msgstr ""
 
-#: includes/theme-layers/layers/views/class-full-screen-template.php:232
-#: includes/theme-layers/layers/views/class-full-screen-template.php:236
+#: includes/theme-layers/layers/views/single-conversational_form.php:229
+#: includes/theme-layers/layers/views/single-conversational_form.php:233
 msgid "Next"
 msgstr ""

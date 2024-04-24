@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms Conversational Forms Add-On
 Plugin URI: https://gravityforms.com
 Description: Create conversational-style forms from your Gravity Forms.
-Version: 1.2.0
+Version: 1.3.0
 Author: Gravity Forms
 Author URI: https://gravityforms.com
 License: GPL-3.0+
@@ -26,10 +26,13 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 defined( 'ABSPATH' ) || die();
 
 // Defines the current version of the Gravity Forms Conversational Forms Add-On.
-define( 'GF_CF_VERSION', '1.2.0' );
+define( 'GF_CF_VERSION', '1.3.0' );
 
 // Defines the minimum version of Gravity Forms required to run Gravity Forms Conversational Forms Add-On.
 define( 'GF_CF_MIN_GF_VERSION', '2.7.11' );
+
+// Defines the minimum version of Gravity Forms required to run all the features of the Gravity Forms Conversational Forms Add-On.
+define( 'GF_CF_MIN_COMPAT_GF_VERSION', '2.8.3' );
 
 /**
  * Path to CF root folder.
@@ -40,6 +43,12 @@ define( 'GF_CF_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 
 // After Gravity Forms is loaded, load the Add-On.
 add_action( 'gform_loaded', array( 'GF_Conversational_Forms_Bootstrap', 'load_addon' ), 5 );
+
+// This plugin creates a custom post type, so we need to flush the rewrite rules on activation.
+register_activation_hook( __FILE__, 'gf_conversational_forms_flush_rewrite_rules' );
+function gf_conversational_forms_flush_rewrite_rules() {
+	flush_rewrite_rules();
+}
 
 /**
  * Loads the Gravity Forms Conversational Forms Add-On.
